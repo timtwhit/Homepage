@@ -74,5 +74,6 @@ def open_browser():
 
 with http.server.ThreadingHTTPServer(('', PORT), Handler) as httpd:
     print(f'Serving at http://localhost:{PORT}')
-    threading.Timer(0.5, open_browser).start()
+    if os.environ.get('HOMEPAGE_NO_BROWSER') != '1':   # set when a launcher opens the browser itself
+        threading.Timer(0.5, open_browser).start()
     httpd.serve_forever()
