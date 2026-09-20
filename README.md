@@ -21,7 +21,11 @@ python save_server.py
 ```
 
 Then open <http://localhost:8765/homepage.html>. On Windows, double-click
-`open.vbs` (or pin `open.bat`) to do both.
+`open.vbs` (or pin `open.bat`) to do both. On Linux/WSL, `./open.sh` does the
+same (under WSL it opens the Windows default browser and, if systemd is on,
+runs the server as a `homepage.service` user unit so it survives the launching
+`wsl.exe` session; a Windows shortcut can then just run
+`wsl.exe -d Ubuntu -- /path/to/open.sh`).
 
 ## Link data format
 
