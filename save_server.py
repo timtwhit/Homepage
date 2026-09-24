@@ -69,16 +69,40 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass  # suppress request logs
 
 
+# Opens a URL through the desktop shell (the running explorer.exe), exactly as
+# if the user had clicked it. If Chrome isn't running yet, a Chrome started
+# directly by this script (or by `explorer.exe <url>`, which on this Windows
+# build just opens Documents) ends up a child of pythonw / the logon scheduled
+# task, and that Chrome then silently ignores every link clicked elsewhere
+# (Outlook, File Explorer, terminals). Retries while the desktop starts at logon.
+DESKTOP_SHELL_OPEN = r'''
+$sw = [Activator]::CreateInstance([type]::GetTypeFromCLSID([guid]'9BA05972-F6A8-11CF-A442-00A0C90A8F39'))
+for ($i = 0; $i -lt 20; $i++) {
+    try {
+        $h = 0
+        $desk = $sw.FindWindowSW([ref]0, [ref]0, 8, [ref]$h, 1)
+        $desk.Document.Application.ShellExecute($args[0])
+        exit 0
+    } catch { Start-Sleep -Milliseconds 500 }
+}
+exit 1
+'''
+
+
 def open_browser():
     url = f'http://localhost:{PORT}/homepage.html?_={random.randint(0, 10**9)}'
     if os.name == 'nt':
-        # Hand the URL to Explorer rather than launching Chrome ourselves. If
-        # Chrome isn't running yet, a Chrome started from here inherits the
-        # hidden Task Scheduler context and then silently ignores every link
-        # clicked elsewhere (Outlook, File Explorer, terminals).
-        subprocess.Popen(['explorer.exe', url])
-    else:
-        webbrowser.open(url)
+        try:
+            r = subprocess.run(
+                ['powershell', '-NoProfile', '-NonInteractive', '-Command',
+                 f'& {{{DESKTOP_SHELL_OPEN}}} "{url}"'],
+                creationflags=subprocess.CREATE_NO_WINDOW, timeout=30)
+            if r.returncode == 0:
+                return
+            log(f'desktop-shell open failed (exit {r.returncode}); falling back')
+        except Exception:
+            log('desktop-shell open failed; falling back: ' + traceback.format_exc())
+    webbrowser.open(url)
 
 
 with http.server.ThreadingHTTPServer(('', PORT), Handler) as httpd:
