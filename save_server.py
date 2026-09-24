@@ -2,6 +2,7 @@ import http.server
 import json
 import os
 import random
+import subprocess
 import threading
 import traceback
 import webbrowser
@@ -69,7 +70,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def open_browser():
-    webbrowser.open(f'http://localhost:{PORT}/homepage.html?_={random.randint(0, 10**9)}')
+    url = f'http://localhost:{PORT}/homepage.html?_={random.randint(0, 10**9)}'
+    if os.name == 'nt':
+        # Hand the URL to Explorer rather than launching Chrome ourselves. If
+        # Chrome isn't running yet, a Chrome started from here inherits the
+        # hidden Task Scheduler context and then silently ignores every link
+        # clicked elsewhere (Outlook, File Explorer, terminals).
+        subprocess.Popen(['explorer.exe', url])
+    else:
+        webbrowser.open(url)
 
 
 with http.server.ThreadingHTTPServer(('', PORT), Handler) as httpd:
